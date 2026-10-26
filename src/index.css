@@ -485,3 +485,22 @@ td a { overflow-wrap: normal; }
   .m-only { display: block; margin-top: 4px; color: var(--ink-2); }
 }
 @media (max-width: 600px) { .d-only-inline { display: none; } }
+
+/* Mechanism glossary and walkthrough */
+.gloss { display: grid; gap: 2px; margin: 4px 0 0; font-size: 0.875rem; }
+.gloss dt { font-size: 0.75rem; font-weight: 650; color: var(--ink-3); margin-top: 8px; }
+.gloss dt:first-child { margin-top: 0; }
+.gloss dd { margin: 0; line-height: 1.5; }
+.mech-detail { max-height: 560px; overflow-y: auto; }
+.walk-wrap > summary { cursor: pointer; list-style-position: outside; margin-bottom: 12px; }
+.walk { display: grid; gap: 22px; max-width: 78ch; }
+.walk-stage { font-size: 0.9375rem; color: var(--stain-ink); padding-top: 4px; border-top: 1px solid var(--rule); }
+.walk-step { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: start; }
+.walk-num { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 0.75rem; font-weight: 700; background: var(--stain-soft); color: var(--stain-ink); }
+.walk-step.tradeoff .walk-num { background: var(--s-stopped-bg); color: var(--s-stopped); }
+.walk-step h4 { font-size: 0.9375rem; }
+.walk-links { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.walk details summary { cursor: pointer; color: var(--stain-ink); }
+.walk details[open] summary { margin-bottom: 6px; }
+.walk-what { color: var(--ink); line-height: 1.55; }
+.walk-tag { font-size: 0.75rem; font-weight: 650; color: var(--stain-ink); margin-right: 4px; }

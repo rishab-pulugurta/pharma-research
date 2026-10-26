@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { glossary } from '../data/mechGlossary'
 import { mechNodes, type MechLayer } from '../data/mechNodes'
 import type { Confidence, Drug, MechEdge } from '../data/types'
 import { drugList, hrefFor } from '../lib/graph'
@@ -125,6 +126,96 @@ function connectedTo(id: string, edges: MechEdge[]) {
   return set
 }
 
+function GlossaryBlock({ id, fallback }: { id: string; fallback: string }) {
+  const g = glossary[id]
+  if (!g) return <p className="small">{fallback}</p>
+  return (
+    <dl className="gloss">
+      <dt>What it is</dt><dd>{g.what}</dd>
+      <dt>What it normally does</dt><dd>{g.normal}</dd>
+      {g.disease && <><dt>In disease and treatment</dt><dd>{g.disease}</dd></>}
+      {g.analogy && <><dt>Think of it as</dt><dd><em>{g.analogy}</em></dd></>}
+    </dl>
+  )
+}
+
+const stages: { title: string; layers: MechLayer[]; tradeoff?: boolean }[] = [
+  { title: 'At the molecular target', layers: ['target'] },
+  { title: 'Inside the cell', layers: ['cell'] },
+  { title: 'Effects on the body', layers: ['physio'] },
+  { title: 'Tradeoffs and side effects', layers: ['physio', 'cell'], tradeoff: true },
+]
+
+/** The same map as an ordered, readable walkthrough: drug, then target, cell and body, each step explained. */
+export function MechanismWalkthrough({ drug }: { drug: Drug }) {
+  const edges = drug.mechanism
+  // Order steps by distance from the drug, so the walkthrough follows the chain of cause and effect.
+  const depth = new Map<string, number>([['self', 0]])
+  for (let changed = true; changed;) {
+    changed = false
+    for (const e of edges) {
+      const d = depth.get(e.from)
+      if (d !== undefined && (depth.get(e.to) ?? Infinity) > d + 1) { depth.set(e.to, d + 1); changed = true }
+    }
+  }
+  const nodes = [...depth.keys()].filter((id) => id !== 'self' && mechNodes[id]).sort((a, b) => depth.get(a)! - depth.get(b)!)
+  const name = (id: string) => (id === 'self' ? drug.name : mechNodes[id]?.label ?? id)
+  let n = 1
+  return (
+    <div className="walk">
+      <div className="walk-step">
+        <div className="walk-num">{n++}</div>
+        <div className="stack-s">
+          <h4>{drug.name}: the drug</h4>
+          <p className="small">{drug.oneLiner} {drug.levels.molecular}</p>
+        </div>
+      </div>
+      {stages.map((stage) => {
+        const ids = nodes.filter((id) => stage.layers.includes(mechNodes[id].layer) && Boolean(mechNodes[id].tradeoff) === Boolean(stage.tradeoff))
+        if (!ids.length) return null
+        return (
+          <section key={stage.title} className="stack-s">
+            <h3 className="walk-stage">{stage.title}</h3>
+            {ids.map((id) => {
+              const m = mechNodes[id]
+              const into = edges.filter((e) => e.to === id)
+              const g = glossary[id]
+              return (
+                <div key={id} className={`walk-step${m.tradeoff ? ' tradeoff' : ''}`}>
+                  <div className="walk-num">{n++}</div>
+                  <div className="stack-s" style={{ minWidth: 0 }}>
+                    <h4>{m.label}</h4>
+                    <div className="walk-links">
+                      {into.map((e, i) => (
+                        <span key={i} className="xsmall">
+                          From <strong>{name(e.from)}</strong>{e.label ? ` (${e.label})` : ''} <ConfidenceTag c={e.confidence} />
+                        </span>
+                      ))}
+                    </div>
+                    {g ? <p className="small walk-what">{g.what}</p> : null}
+                    <p className="small"><span className="walk-tag">In this mechanism</span> {m.detail}</p>
+                    {g && (
+                      <details>
+                        <summary className="small">What it normally does{g.disease ? ', and what changes in disease' : ''}</summary>
+                        <dl className="gloss">
+                          <dt>What it normally does</dt><dd>{g.normal}</dd>
+                          {g.disease && <><dt>In disease and treatment</dt><dd>{g.disease}</dd></>}
+                          {g.analogy && <><dt>Think of it as</dt><dd><em>{g.analogy}</em></dd></>}
+                        </dl>
+                      </details>
+                    )}
+                    {m.link && <Link className="xsmall" to={hrefFor(m.link.kind, m.link.id)}>Open the {m.link.kind} profile</Link>}
+                  </div>
+                </div>
+              )
+            })}
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
 export function MechanismExplorer({ drug }: { drug: Drug }) {
   const [level, setLevel] = useState<Level>('molecular')
   const [sel, setSel] = useState<string | null>(null)
@@ -229,12 +320,12 @@ export function MechanismExplorer({ drug }: { drug: Drug }) {
         </div>
         <aside className="mech-detail" aria-live="polite">
           {!selNode && (
-            <p className="small muted">Select any node to see what is known about that step, how strong the evidence is, and which other drugs act there.</p>
+            <p className="small muted">Select any step in the map to learn what it is, what it normally does in the body, and what this drug changes. Or read the full walkthrough below the map.</p>
           )}
           {selNode && (
             <div className="stack-s">
               <h4>{selNode.label}</h4>
-              {meta && <p className="small">{meta.detail}</p>}
+              {meta && sel && <GlossaryBlock id={sel} fallback={meta.detail} />}
               {sel === 'self' && <p className="small">{drug.oneLiner}</p>}
               {meta?.tradeoff && <p className="xsmall" style={{ color: 'var(--s-stopped)' }}>Tradeoff or adverse effect</p>}
               {incoming.length > 0 && (

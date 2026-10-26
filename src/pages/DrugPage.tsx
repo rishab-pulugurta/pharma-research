@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import {
   Cite, ConfidenceTag, ConnectedRail, EntityActions, EntityLink, Facts, NotFound, NotesPanel, SourceList, StatusChip, SubNav, Verified,
 } from '../components/bits'
-import { MechanismExplorer } from '../components/MechanismExplorer'
+import { MechanismExplorer, MechanismWalkthrough } from '../components/MechanismExplorer'
 import { RegTimeline, regChipClass } from '../components/RegTimeline'
 import { Structure } from '../components/Structure'
 import { companies, drugs, entityName, hrefFor, leadPhase, relatedDrugs, targets, trialsForDrug } from '../lib/graph'
@@ -44,6 +44,10 @@ export function DrugPage() {
           <span className="xsmall faint">Switch the depth, then select a node</span>
         </div>
         <MechanismExplorer drug={d} />
+        <details className="walk-wrap" open>
+          <summary><h3 style={{ display: 'inline' }}>Step-by-step walkthrough</h3> <span className="xsmall faint">every step in the map, explained in order</span></summary>
+          <MechanismWalkthrough drug={d} />
+        </details>
         <div className="two-col" style={{ gap: 24 }}>
           <div>
             <h3 style={{ marginBottom: 8 }}>Target engagement</h3>
