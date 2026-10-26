@@ -72,7 +72,8 @@ export function AskPanel({ title, scope, buildContext, suggestions }: {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
-  const convId = useRef(crypto.randomUUID())
+  // The page's data, gathered once per conversation and sent with every question (the server keeps no history).
+  const context = useRef<string | null>(null)
   const abort = useRef<AbortController | null>(null)
   const end = useRef<HTMLDivElement>(null)
   const box = useRef<HTMLTextAreaElement>(null)
@@ -80,7 +81,7 @@ export function AskPanel({ title, scope, buildContext, suggestions }: {
   // A new page means a new conversation with that page's context.
   useEffect(() => {
     setTurns([])
-    convId.current = crypto.randomUUID()
+    context.current = null
     return () => abort.current?.abort()
   }, [scope.kind, scope.id])
 
@@ -97,16 +98,20 @@ export function AskPanel({ title, scope, buildContext, suggestions }: {
     setTurns((t) => [...t, { role: 'user', text: q }, { role: 'assistant', text: '' }])
     const patch = (fn: (t: Turn) => Turn) => setTurns((all) => [...all.slice(0, -1), fn(all[all.length - 1])])
     try {
-      const context = turns.length === 0 ? await buildContext() : undefined
+      if (turns.length === 0 || context.current === null) context.current = await buildContext()
+      // Earlier completed exchanges; failed answers are left out.
+      const history = turns
+        .filter((t, i) => (t.role === 'user' ? turns[i + 1]?.text && !turns[i + 1]?.error : t.text && !t.error))
+        .map((t) => ({ role: t.role === 'user' ? 'user' : 'model', text: t.text }))
       setStatus('Thinking…')
       abort.current = new AbortController()
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId: convId.current, question: q, context }),
+        body: JSON.stringify({ question: q, context: context.current, history }),
         signal: abort.current.signal,
       })
-      if (!res.ok || !res.body) throw new Error(`The assistant is unavailable (${res.status}). Is the dev server running?`)
+      if (!res.ok || !res.body) throw new Error(`The assistant is unavailable (${res.status}). Try again shortly.`)
       const reader = res.body.getReader()
       const dec = new TextDecoder()
       let buf = ''
@@ -139,7 +144,7 @@ export function AskPanel({ title, scope, buildContext, suggestions }: {
       <div className="ask-head">
         <h2>{title}</h2>
         {turns.length > 0 && !busy && (
-          <button className="btn ghost small" onClick={() => { setTurns([]); convId.current = crypto.randomUUID(); box.current?.focus() }}>New conversation</button>
+          <button className="btn ghost small" onClick={() => { setTurns([]); context.current = null; box.current?.focus() }}>New conversation</button>
         )}
       </div>
       <p className="xsmall faint">Answers come from Google Gemini (free tier), using this page’s sourced data first and live lookups in ClinicalTrials.gov, FDA records and PubMed when they need something newer. They’re for learning, not medical advice, and can be wrong, so check the linked sources.</p>
