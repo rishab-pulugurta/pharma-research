@@ -162,7 +162,7 @@ export function askHandler(apiKey?: string, model = DEFAULT_MODEL) {
     } catch (err) {
       let message = err instanceof Error ? err.message : 'Something went wrong.'
       if (message === 'NO_KEY') {
-        message = 'Chat isn’t set up yet. Get a free key at aistudio.google.com/apikey, add GEMINI_API_KEY=… to a .env.local file in the project folder, then restart the app.'
+        message = 'Chat isn’t set up yet. Get a free key at aistudio.google.com/apikey and set it as GEMINI_API_KEY: in a .env.local file in the project folder (then restart the app), or in the Vercel project’s environment variables (then redeploy).'
       } else if (err instanceof ApiError) {
         if (err.status === 429) message = 'The free Gemini quota is used up for now. It resets daily; try again later.'
         else if (err.status === 503 || err.status === 500) message = 'Gemini’s free service is overloaded right now. Try again in a minute.'
